@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>FLUX C17</title>
     <style>
-        /* Сброс всех отступов */
         body, html {
             margin: 0; 
             padding: 0; 
@@ -12,10 +11,10 @@
             height: 100%;
             overflow: hidden; 
             background-color: #000;
-            cursor: default; /* Курсор обычный */
+            /* Отключаем выделение текста и курсоры, если нужно */
+            user-select: none; 
         }
 
-        /* Контейнер для картинки */
         .screen-container {
             position: absolute;
             top: 0; left: 0;
@@ -26,124 +25,99 @@
             z-index: 1;
         }
 
-        /* Сама картинка */
         img.main-bg {
-            /* Ключевой момент для качества: запрещаем браузеру размазывать картинку при масштабировании */
-            image-rendering: -webkit-optimize-contrast; 
+            /* МАКСИМАЛЬНОЕ КАЧЕСТВО КАРТИНКИ */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
             
-            /* Растягиваем на весь экран, сохраняя пропорции */
             min-width: 100%;
             min-height: 100%;
             object-fit: cover;
             
-            /* Легкая настройка яркости/контраста, если нужно сделать четче */
-            filter: contrast(1.05) brightness(1.0);
+            /* Легкая коррекция резкости через фильтр, если браузер все равно мылит */
+            filter: contrast(1.1) saturate(1.1);
         }
 
-        /* Затемнение по краям (виньетка), чтобы фокус был в центре */
+        /* Виньетка для атмосферы */
         .vignette {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.6) 100%);
-            pointer-events: none; /* Чтобы виньетка не мешала кликам */
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.7) 100%);
+            pointer-events: none;
             z-index: 2;
         }
-
-        /* Текст подсказки про звук (появляется только если звук выключен) */
-        .audio-hint {
-            position: absolute;
-            bottom: 80px; /* Выше стандартной полоски GMod */
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.7);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 14px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            z-index: 3;
-            transition: opacity 0.5s ease;
-            pointer-events: none;
-        }
-        
-        .audio-hint.hidden {
-            opacity: 0;
-        }
-
     </style>
 </head>
 <body>
 
-    <!-- Звуковой элемент -->
-    <!-- preload="auto" говорит браузеру качать звук сразу -->
+    <!-- Звук без атрибутов controls, скрытый -->
     <audio id="bg-music" loop preload="auto">
         <source src="soundtrack.mp3" type="audio/mpeg">
     </audio>
 
     <div class="screen-container">
-        <!-- ВАЖНО: Имя файла должно совпадать точно -->
         <img src="background.jpg" alt="Flux C17 Loading Screen" class="main-bg">
     </div>
     
     <div class="vignette"></div>
 
-    <!-- Подсказка "Нажмите любую кнопку для звука" -->
-    <div class="audio-hint" id="hint-text">
-        Нажмите ЛКМ или пробел для включения звука
-    </div>
-
     <script>
         const audio = document.getElementById('bg-music');
-        const hint = document.getElementById('hint-text');
-        let isPlaying = false;
+        let started = false;
 
         // Функция запуска звука
-        function startAudio() {
-            if (!isPlaying) {
-                audio.volume = 0.6; // Громкость 60%
-                
-                // Пытаемся запустить
-                const playPromise = audio.play();
-                
-                if (playPromise !== undefined) {
-                    playPromise.then(() => {
-                        // Если запустилось успешно
-                        isPlaying = true;
-                        hint.classList.add('hidden'); // Прячем подсказку
-                        
-                        // Удаляем слушатели событий, они больше не нужны
-                        window.removeEventListener('click', startAudio);
-                        window.removeEventListener('keydown', startAudio);
-                    }).catch(error => {
-                        console.log("Звук заблокирован:", error);
-                        // Если ошибка, оставляем подсказку видимой
-                    });
-                } else {
-                    // Старые браузеры могут вернуть undefined
-                    isPlaying = true;
-                    hint.classList.add('hidden');
-                }
+        function tryPlayAudio() {
+            if (started) return;
+            
+            audio.volume = 0.6; // Громкость
+            
+            // Пытаемся запустить
+            const playPromise = audio.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    started = true;
+                    // Если запустилось успешно, удаляем слушатели событий, чтобы экономить ресурсы
+                    cleanupListeners();
+                }).catch(error => {
+                    // Если ошибка блокировки, ничего не делаем, ждем следующего действия пользователя
+                    console.log("Waiting for interaction...");
+                });
+            } else {
+                // Старые движки могут вернуть undefined
+                started = true;
+                cleanupListeners();
             }
         }
 
-        // Слушаем клик мышью где угодно на экране
-        window.addEventListener('click', startAudio);
-        
-        // Слушаем нажатие любой клавиши (пробел, Enter и т.д.)
-        window.addEventListener('keydown', startAudio);
+        // Удаляем слушателей после успешного старта
+        function cleanupListeners() {
+            window.removeEventListener('click', tryPlayAudio);
+            window.removeEventListener('mousemove', tryPlayAudio);
+            window.removeEventListener('keydown', tryPlayAudio);
+        }
 
-        // Дополнительная страховка: попытка автозапуска через 1 секунду после загрузки
-        // Иногда GMod позволяет автозапуск, если страница уже активна
+        // 1. Слушаем клик мышью
+        window.addEventListener('click', tryPlayAudio);
+        
+        // 2. Слушаем движение мыши (часто игрок двигает мышкой сразу при появлении экрана)
+        window.addEventListener('mousemove', tryPlayAudio);
+        
+        // 3. Слушаем клавиатуру
+        window.addEventListener('keydown', tryPlayAudio);
+
+        // 4. Попытка форсированного автозапуска через 500мс
+        // В GMod иногда это срабатывает, так как контекст страницы считается "активным"
         setTimeout(() => {
-            if(!isPlaying) {
-                 // Пробуем тихо запустить, иногда это обходит блокировку в специфических движках
-                 audio.muted = true; 
-                 audio.play().then(() => {
-                     audio.muted = false; // Размучиваем
-                     isPlaying = true;
-                     hint.classList.add('hidden');
-                 }).catch(e => {});
+            if(!started) {
+                audio.muted = true;
+                audio.play().then(() => {
+                    audio.muted = false;
+                    started = true;
+                    cleanupListeners();
+                }).catch(e => {});
             }
-        }, 1000);
+        }, 500);
 
     </script>
 </body>
