@@ -2,105 +2,149 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>FLUX C17 Loading</title>
+    <title>FLUX C17</title>
     <style>
+        /* Сброс всех отступов */
         body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%;
-            overflow: hidden; background-color: #050505;
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%;
+            overflow: hidden; 
+            background-color: #000;
+            cursor: default; /* Курсор обычный */
         }
 
-        /* Фоновая картинка с анимацией */
-        .bg-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('background.jpg') center/cover no-repeat; 
-            animation: breathe 10s infinite ease-in-out alternate;
-        }
-
-        @keyframes breathe {
-            0% { transform: scale(1); filter: contrast(1) brightness(1); }
-            100% { transform: scale(1.05); filter: contrast(1.1) brightness(0.95); }
-        }
-
-        /* Эффект пролетающего дрона */
-        .drone-light {
-            position: absolute; top: 15%; left: -10%; width: 200px; height: 2px;
-            background: linear-gradient(90deg, transparent, #ffffcc, transparent);
-            box-shadow: 0 0 20px #ffffaa;
-            z-index: 2; opacity: 0.6;
-            animation: flyDrone 15s infinite linear;
-        }
-        
-        .beam {
-            position: absolute; top: 15%; left: -10%; 
-            width: 0; height: 0;
-            border-left: 10px solid transparent; 
-            border-right: 10px solid transparent;
-            border-top: 150px solid rgba(255, 255, 200, 0.1);
-            filter: blur(5px);
-            animation: flyBeam 15s infinite linear;
+        /* Контейнер для картинки */
+        .screen-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             z-index: 1;
         }
 
-        @keyframes flyDrone {
-            0% { transform: translateX(-10vw); opacity: 0; }
-            10% { opacity: 0.8; }
-            90% { opacity: 0.8; }
-            100% { transform: translateX(120vw); opacity: 0; }
-        }
-        @keyframes flyBeam {
-            0% { transform: translateX(-10vw); opacity: 0; }
-            10% { opacity: 0.5; }
-            90% { opacity: 0.5; }
-            100% { transform: translateX(120vw); opacity: 0; }
+        /* Сама картинка */
+        img.main-bg {
+            /* Ключевой момент для качества: запрещаем браузеру размазывать картинку при масштабировании */
+            image-rendering: -webkit-optimize-contrast; 
+            
+            /* Растягиваем на весь экран, сохраняя пропорции */
+            min-width: 100%;
+            min-height: 100%;
+            object-fit: cover;
+            
+            /* Легкая настройка яркости/контраста, если нужно сделать четче */
+            filter: contrast(1.05) brightness(1.0);
         }
 
-        /* Индикатор загрузки (три красные точки) */
-        .loading-dots {
-            position: absolute; bottom: 60px; left: 50%;
+        /* Затемнение по краям (виньетка), чтобы фокус был в центре */
+        .vignette {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.6) 100%);
+            pointer-events: none; /* Чтобы виньетка не мешала кликам */
+            z-index: 2;
+        }
+
+        /* Текст подсказки про звук (появляется только если звук выключен) */
+        .audio-hint {
+            position: absolute;
+            bottom: 80px; /* Выше стандартной полоски GMod */
+            left: 50%;
             transform: translateX(-50%);
-            display: flex; gap: 10px; z-index: 3;
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            z-index: 3;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
         }
-        .dot {
-            width: 8px; height: 8px; background: #ff3333;
-            border-radius: 50%;
-            animation: blink 1.5s infinite;
+        
+        .audio-hint.hidden {
+            opacity: 0;
         }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
 
-        @keyframes blink {
-            0%, 100% { opacity: 0.3; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 10px red; }
-        }
     </style>
 </head>
 <body>
 
-    <audio id="myAudio" loop>
+    <!-- Звуковой элемент -->
+    <!-- preload="auto" говорит браузеру качать звук сразу -->
+    <audio id="bg-music" loop preload="auto">
         <source src="soundtrack.mp3" type="audio/mpeg">
     </audio>
 
-    <div class="bg-layer"></div>
-    <div class="drone-light"></div>
-    <div class="beam"></div>
+    <div class="screen-container">
+        <!-- ВАЖНО: Имя файла должно совпадать точно -->
+        <img src="background.jpg" alt="Flux C17 Loading Screen" class="main-bg">
+    </div>
+    
+    <div class="vignette"></div>
 
-    <!-- Только индикатор загрузки внизу -->
-    <div class="loading-dots">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
+    <!-- Подсказка "Нажмите любую кнопку для звука" -->
+    <div class="audio-hint" id="hint-text">
+        Нажмите ЛКМ или пробел для включения звука
     </div>
 
     <script>
-        window.addEventListener('load', function() {
-            var audio = document.getElementById("myAudio");
-            audio.play().catch(function(error) {
-                document.body.addEventListener('click', function() {
-                    audio.volume = 0.5;
-                    audio.play();
-                }, { once: true });
-            });
-        });
+        const audio = document.getElementById('bg-music');
+        const hint = document.getElementById('hint-text');
+        let isPlaying = false;
+
+        // Функция запуска звука
+        function startAudio() {
+            if (!isPlaying) {
+                audio.volume = 0.6; // Громкость 60%
+                
+                // Пытаемся запустить
+                const playPromise = audio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        // Если запустилось успешно
+                        isPlaying = true;
+                        hint.classList.add('hidden'); // Прячем подсказку
+                        
+                        // Удаляем слушатели событий, они больше не нужны
+                        window.removeEventListener('click', startAudio);
+                        window.removeEventListener('keydown', startAudio);
+                    }).catch(error => {
+                        console.log("Звук заблокирован:", error);
+                        // Если ошибка, оставляем подсказку видимой
+                    });
+                } else {
+                    // Старые браузеры могут вернуть undefined
+                    isPlaying = true;
+                    hint.classList.add('hidden');
+                }
+            }
+        }
+
+        // Слушаем клик мышью где угодно на экране
+        window.addEventListener('click', startAudio);
+        
+        // Слушаем нажатие любой клавиши (пробел, Enter и т.д.)
+        window.addEventListener('keydown', startAudio);
+
+        // Дополнительная страховка: попытка автозапуска через 1 секунду после загрузки
+        // Иногда GMod позволяет автозапуск, если страница уже активна
+        setTimeout(() => {
+            if(!isPlaying) {
+                 // Пробуем тихо запустить, иногда это обходит блокировку в специфических движках
+                 audio.muted = true; 
+                 audio.play().then(() => {
+                     audio.muted = false; // Размучиваем
+                     isPlaying = true;
+                     hint.classList.add('hidden');
+                 }).catch(e => {});
+            }
+        }, 1000);
+
     </script>
 </body>
 </html>
