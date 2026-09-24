@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>FLUX C17 Loading</title>
+    <style>
+        /* --- ОБЩИЕ НАСТРОЙКИ --- */
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: #050505;
+            font-family: 'Arial', sans-serif; user-select: none;
+        }
+
+        /* --- ФОНОВАЯ КАРТИНКА С ЭФФЕКТОМ ДЫХАНИЯ --- */
+        .bg-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            /* ВАЖНО: Убедитесь, что файл называется background.jpg */
+            background: url('background.jpg') center/cover no-repeat; 
+            z-index: 1;
+            animation: breathe 10s infinite ease-in-out alternate;
+            filter: brightness(0.9); /* Немного затемняем для атмосферы */
+        }
+
+        @keyframes breathe {
+            0% { transform: scale(1); filter: contrast(1) brightness(0.9); }
+            100% { transform: scale(1.05); filter: contrast(1.1) brightness(0.8); }
+        }
+
+        /* --- ТЕМНАЯ ВИНЬЕТКА (РАМКА) --- */
+        .vignette {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 100%);
+            z-index: 2; pointer-events: none;
+        }
+
+        /* --- КОНТЕЙНЕР ДЛЯ ТЕКСТА И ЛОГОТИПА --- */
+        .content-wrapper {
+            position: relative; z-index: 3;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            height: 100%; color: white; text-align: center;
+        }
+
+        /* --- ГЛИТЧ-ЭФФЕКТ ДЛЯ ЗАГОЛОВКА FLUX C17 --- */
+        .glitch-text {
+            font-size: 5rem; font-weight: 900; letter-spacing: 5px;
+            text-transform: uppercase; position: relative;
+            color: #e0e0e0;
+            /* Синий оттенок для "C17", если хотите выделить */
+        }
+        
+        /* Псевдоэлементы для эффекта расслоения цвета (RGB Split) */
+        .glitch-text::before, .glitch-text::after {
+            content: attr(data-text);
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.8;
+        }
+        .glitch-text::before {
+            left: 2px; text-shadow: -1px 0 red; clip-path: inset(20% 0 80% 0);
+            animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+        }
+        .glitch-text::after {
+            left: -2px; text-shadow: -1px 0 blue; clip-path: inset(80% 0 20% 0);
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim-1 {
+            0% { clip-path: inset(20% 0 80% 0); }
+            20% { clip-path: inset(60% 0 10% 0); }
+            40% { clip-path: inset(40% 0 50% 0); }
+            60% { clip-path: inset(80% 0 5% 0); }
+            80% { clip-path: inset(10% 0 70% 0); }
+            100% { clip-path: inset(30% 0 20% 0); }
+        }
+        @keyframes glitch-anim-2 {
+            0% { clip-path: inset(10% 0 85% 0); }
+            20% { clip-path: inset(90% 0 10% 0); }
+            40% { clip-path: inset(20% 0 40% 0); }
+            60% { clip-path: inset(50% 0 30% 0); }
+            80% { clip-path: inset(80% 0 10% 0); }
+            100% { clip-path: inset(10% 0 90% 0); }
+        }
+
+        /* --- ПОДЗАГОЛОВОК HL2RP SERVER --- */
+        .subtitle {
+            font-size: 1.5rem; margin-top: 10px; letter-spacing: 8px;
+            color: #aaa; border-bottom: 1px solid #fff; padding-bottom: 5px;
+            animation: fadeIn 2s ease-out forwards;
+        }
+
+        /* --- АНИМАЦИЯ ДРОНА (ЛЕТАЮЩИЙ ОБЪЕКТ) --- */
+        .drone-light {
+            position: absolute; top: 15%; left: -10%; width: 200px; height: 2px;
+            background: linear-gradient(90deg, transparent, #ffffcc, transparent);
+            box-shadow: 0 0 20px #ffffaa;
+            z-index: 2; opacity: 0.6;
+            animation: flyDrone 15s infinite linear;
+            transform-origin: right center;
+        }
+        
+        /* Луч света от дрона */
+        .beam {
+            position: absolute; top: 15%; left: -10%; width: 0; height: 0;
+            border-left: 10px solid transparent; border-right: 10px solid transparent;
+            border-top: 150px solid rgba(255, 255, 200, 0.1);
+            filter: blur(5px);
+            animation: flyBeam 15s infinite linear;
+            z-index: 1;
+        }
+
+        @keyframes flyDrone {
+            0% { transform: translateX(-10vw) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.8; }
+            100% { transform: translateX(120vw) rotate(0deg); opacity: 0; }
+        }
+        @keyframes flyBeam {
+            0% { transform: translateX(-10vw); opacity: 0; }
+            10% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { transform: translateX(120vw); opacity: 0; }
+        }
+
+        /* --- ИНДИКАТОР ЗАГРУЗКИ (ЛОГО COMBINE) --- */
+        .loading-indicator {
+            margin-top: 40px; display: flex; gap: 10px;
+        }
+        .dot {
+            width: 10px; height: 10px; background: #ff3333; border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 10px red; }
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    </style>
+</head>
+<body>
+
+    <!-- Звуковой трек -->
+    <!-- autoplay может не работать без клика пользователя в некоторых браузерах, но в GMod обычно работает -->
+    <audio id="myAudio" loop>
+        <!-- ВАЖНО: Файл должен называться soundtrack.mp3 -->
+        <source src="soundtrack.mp3" type="audio/mpeg">
+        Ваш браузер не поддерживает тег audio.
+    </audio>
+
+    <!-- Слои визуальных эффектов -->
+    <div class="bg-layer"></div>
+    
+    <!-- Эффект пролетающего дрона над головой -->
+    <div class="drone-light"></div>
+    <div class="beam"></div>
+
+    <div class="vignette"></div>
+
+    <!-- Основной контент -->
+    <div class="content-wrapper">
+        <!-- data-text нужен для работы глитча -->
+        <h1 class="glitch-text" data-text="FLUX C17">FLUX C17</h1>
+        <div class="subtitle">HL2RP SERVER • CITY 17</div>
+        
+        <div class="loading-indicator">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+    </div>
+
+    <script>
+        // Скрипт для запуска звука сразу при загрузке страницы
+        window.addEventListener('load', function() {
+            var audio = document.getElementById("myAudio");
+            
+            // Пытаемся запустить звук автоматически
+            audio.play().catch(function(error) {
+                console.log("Автозапуск заблокирован браузером:", error);
+                
+                // Если автозапуск не сработал, слушаем первый клик мышкой/клавиатурой
+                document.body.addEventListener('click', function() {
+                    audio.volume = 0.5; // Громкость 50%
+                    audio.play();
+                }, { once: true }); // Слушаем только один раз
+                
+                // Также пробуем слушать любую клавишу
+                document.addEventListener('keydown', function() {
+                     if(audio.paused) {
+                        audio.volume = 0.5;
+                        audio.play();
+                     }
+                }, { once: true });
+            });
+        });
+    </script>
+</body>
+</html>
